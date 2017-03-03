@@ -2,23 +2,27 @@ close all; clear all; clc;
 
 %% ========= (2) RECEIVED SIGNAL =========
 
-[a,Fs]=wavread('90pool'); 
-y=a(1:202752,:);
-%%
+[a,Fs]=wavread('BruitBlanc'); 
 
-M=1;                             %Number of sources
-N=2;                            % Number of microphones
-%c = 346.287;                    % Speed of sound in air
-c=1500;
-K = 198;                        % Number of frequency snapshots
-T=1/Fs;                    
-dist = .025;                     % Distance between adjacent microphones
-r = [(-(N-1)/2:(N-1)/2).',zeros(N,2)]; % Assume uniform linear array
-f = 15000;                       % Signal frequency
+%% Paramètres modifiables
 
-% Transmitted signals
-L = 202752; % Number of data snapshots recorded by receiver
+M=1;                            % Number of sources
+N=2;                            % Number of microphones (on doit avoir M<=N-1)
+dist = .15;                     % Distance between adjacent microphones (en m)
+%c = 346.287;                   % Speed of sound in air (en m/s)
+c=1500;                         % Speed of sound in water
+f = 7500;                      % Signal frequency (en Hz)
+
 lfft=1024*1;                    % number of data points for FFT in a snapshot
+K= floor(length(a)/lfft);       % Number of frequency snapshots (multiple of lfft)
+L = K*lfft;                     % Number of data snapshots recorded by receiver
+y=a(1:L,:);                     % Troncated signal (contient nbre entier de snapshots)
+                     
+T=1/Fs;                    
+r = [(-(N-1)/2:(N-1)/2).',zeros(N,2)]; % Assume uniform linear array (on peut avoir élévation si on fait array rectangulaire avec min 3 hydrophones)
+
+
+%% Forme complexe du signal reçu
 df = Fs/lfft/1;                 % frequency grid size
 F = 0:df:Fs/1-df;
 for ih=1:N
@@ -34,7 +38,7 @@ f0=F(mi);
 
 for ih=1:N
     for iv=1:K
-        X0(ih,iv)=X(mi,ih,iv);
+        X0(ih,iv)=X(mi,ih,iv); % signal complexe
     end
 end
 
@@ -42,7 +46,7 @@ end
 Rxx = X0*X0'/L;
 % Search directions
 AzSearch = (0:1:180).'; % Azimuth values to search
-ElSearch = zeros(size(AzSearch)); % Simple 1D example
+ElSearch = zeros(size(AzSearch)); % Simple 1D example (à changer si on cherche aussi élévation)
 
 % Corresponding points on array manifold to search
 kSearch = pi*[cosd(AzSearch).*cosd(ElSearch), ...
@@ -76,7 +80,6 @@ En = E(:,1:end-M); % Noise eigenvectors (ASSUMPTION: M IS KNOWN)
 
 
 % MUSIC spectrum
-%Z = sum(abs(ASearch'*En).^2,2);
 for i=1:length(AzSearch)
     Z=(ASearch(:,i)'*En)*En'*ASearch(:,i);
     Zm(i)=abs(1/Z);
